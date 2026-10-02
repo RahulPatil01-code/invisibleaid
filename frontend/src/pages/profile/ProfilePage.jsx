@@ -1,0 +1,15 @@
+import React, { useState } from 'react';
+import PageHeader from '../../components/common/PageHeader';
+import Card from '../../components/common/Card';
+import FormInput from '../../components/forms/FormInput';
+import Toast from '../../components/common/Toast';
+import { useForm } from 'react-hook-form';
+import { useAuth } from '../../context/AuthContext';
+import { authAPI } from '../../services/api';
+
+export default function ProfilePage() {
+  const { user } = useAuth(); const [showToast, setShowToast] = useState(false); const [error, setError] = useState('');
+  const { register, handleSubmit, reset } = useForm();
+  const onSubmitPassword = async data => { setError(''); if (data.newPassword !== data.confirmPassword) { setError('New passwords do not match.'); return; } try { await authAPI.changePassword({ old_password: data.currentPassword, new_password: data.newPassword }); reset(); setShowToast(true); } catch (apiError) { setError(apiError.message || 'Unable to update password.'); } };
+  return <div><PageHeader title="My Profile" /><div className="grid grid-cols-1 lg:grid-cols-3 gap-6"><div className="lg:col-span-1 space-y-6"><Card title="User Information"><div className="space-y-4 text-sm"><div><label className="block font-medium text-gray-500">Name</label><div className="mt-1 text-gray-900">{[user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.username}</div></div><div><label className="block font-medium text-gray-500">Email</label><div className="mt-1 text-gray-900">{user?.email}</div></div><div><label className="block font-medium text-gray-500">Role</label><div className="mt-1 text-gray-900">{user?.role}</div></div></div></Card><Card title="Organization Details"><div className="space-y-4 text-sm"><div><label className="block font-medium text-gray-500">Organization Name</label><div className="mt-1 text-gray-900">{user?.organization?.name || 'System administrator'}</div></div><div><label className="block font-medium text-gray-500">Type</label><div className="mt-1 text-gray-900">{user?.organization?.org_type || 'ADMIN'}</div></div><div><label className="block font-medium text-gray-500">Approval Status</label><div className="mt-1 text-gray-900">{user?.organization?.status || 'N/A'}</div></div></div></Card></div><div className="lg:col-span-2"><Card title="Change Password"><form onSubmit={handleSubmit(onSubmitPassword)} className="space-y-4 max-w-md">{error && <div className="text-sm text-red-700">{error}</div>}<FormInput label="Current Password" name="currentPassword" type="password" register={register} required /><FormInput label="New Password" name="newPassword" type="password" register={register} required /><FormInput label="Confirm New Password" name="confirmPassword" type="password" register={register} required /><button type="submit" className="bg-teal-600 text-white px-4 py-2 rounded-md text-sm font-medium">Update Password</button></form></Card></div></div>{showToast && <Toast message="Password updated successfully" type="success" onClose={() => setShowToast(false)} />}</div>;
+}

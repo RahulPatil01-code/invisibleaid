@@ -1,0 +1,14 @@
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import PageHeader from '../../components/common/PageHeader';
+import Card from '../../components/common/Card';
+import { schemeAPI } from '../../services/api';
+import { ExternalLink } from 'lucide-react';
+
+export default function SchemeDetails() {
+  const { id } = useParams(); const [scheme, setScheme] = useState(null); const [error, setError] = useState('');
+  useEffect(() => { schemeAPI.getById(id).then(setScheme).catch(apiError => setError(apiError.message || 'Unable to load scheme.')); }, [id]);
+  if (error) return <div className="p-6 text-sm text-red-700">{error}</div>;
+  if (!scheme) return <div className="p-6 text-sm text-gray-500">Loading scheme...</div>;
+  return <div className="space-y-6"><PageHeader title={scheme.name} subtitle={scheme.department} actions={scheme.official_url ? [{ label: 'Visit Official Portal', icon: ExternalLink, variant: 'primary', onClick: () => window.open(scheme.official_url, '_blank') }] : []} /><Card title="Overview"><p className="text-gray-700">{scheme.description}</p><div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm"><div><span className="text-gray-500 block">Type</span><span className="font-medium">{scheme.scheme_type}</span></div><div><span className="text-gray-500 block">Income Limit</span><span className="font-medium">{scheme.income_limit ? `₹${Number(scheme.income_limit).toLocaleString()}/mo` : 'No Limit'}</span></div><div><span className="text-gray-500 block">Age</span><span className="font-medium">{scheme.min_age ?? 'Any'} - {scheme.max_age ?? 'Any'}</span></div><div><span className="text-gray-500 block">Updated</span><span className="font-medium">{scheme.last_updated ? new Date(scheme.last_updated).toLocaleDateString() : 'N/A'}</span></div></div></Card><div className="grid grid-cols-1 lg:grid-cols-2 gap-6"><Card title="Eligibility Requirements"><ul className="list-disc pl-5 space-y-2 text-sm text-gray-700"><li>Education: {scheme.education_level_min || 'Any'} to {scheme.education_level_max || 'Any'}</li><li>Gender: {scheme.gender_requirement === 'ANY' ? 'All genders' : scheme.gender_requirement}</li><li>Ration card: {scheme.ration_card_required ? (scheme.accepted_ration_categories || []).join(', ') : 'Not required'}</li></ul></Card><Card title="Benefits"><p className="text-sm text-gray-700">{scheme.benefits}</p></Card></div><Card title="Required Documents & Application"><div className="flex flex-wrap gap-2">{(scheme.required_documents || []).map(doc => <span key={doc} className="px-2.5 py-1 bg-gray-100 rounded text-xs text-gray-700">{doc}</span>)}</div><p className="pt-4 mt-4 border-t text-sm text-gray-600">{scheme.application_method || 'Apply through the relevant organization or official portal.'}</p><p className="text-xs text-gray-500 mt-2">Source: {scheme.official_source || 'Not specified'}</p></Card></div>;
+}
