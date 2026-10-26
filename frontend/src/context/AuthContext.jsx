@@ -31,8 +31,22 @@ export const AuthProvider = ({ children }) => {
     };
     restore();
     const handleUnauthorized = () => { tokenStorage.clear(); setUser(null); };
+    const handleStorage = event => {
+      if (
+        event.storageArea === localStorage &&
+        [ 'invisibleaid_access_token', 'invisibleaid_refresh_token' ].includes(event.key) &&
+        event.newValue === null
+      ) {
+        setUser(null);
+        setLoading(false);
+      }
+    };
     window.addEventListener('invisibleaid:unauthorized', handleUnauthorized);
-    return () => window.removeEventListener('invisibleaid:unauthorized', handleUnauthorized);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('invisibleaid:unauthorized', handleUnauthorized);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
 
   const login = async (email, password) => {

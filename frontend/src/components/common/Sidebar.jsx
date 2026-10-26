@@ -32,6 +32,7 @@ export default function Sidebar({ isOpen, onClose }) {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const links = isAdmin ? adminLinks : schoolNgoLinks;
+  const dashboardPath = isAdmin ? '/admin/dashboard' : '/dashboard';
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
@@ -47,17 +48,27 @@ export default function Sidebar({ isOpen, onClose }) {
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
           {!collapsed && (
-            <div className="flex items-center gap-2">
+            <NavLink
+              to={dashboardPath}
+              onClick={onClose}
+              aria-label="InvisibleAid dashboard home"
+              className="flex min-w-0 items-center gap-2 border-0 outline-none focus:outline-none focus:ring-0"
+            >
               <div className="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center">
                 <Shield className="w-5 h-5 text-white" />
               </div>
               <span className="font-bold text-gray-800 text-lg">InvisibleAid</span>
-            </div>
+            </NavLink>
           )}
           {collapsed && (
-            <div className="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center mx-auto">
+            <NavLink
+              to={dashboardPath}
+              onClick={onClose}
+              aria-label="InvisibleAid dashboard home"
+              className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-teal-600 border-0 outline-none focus:outline-none focus:ring-0"
+            >
               <Shield className="w-5 h-5 text-white" />
-            </div>
+            </NavLink>
           )}
           <button onClick={onClose} className="lg:hidden p-1 hover:bg-gray-100 rounded">
             <X className="w-5 h-5" />

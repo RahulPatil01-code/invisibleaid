@@ -1,6 +1,7 @@
 import React from 'react';
 
-export default function FormInput({ label, name, type = 'text', error, required, register, helpText, ...rest }) {
+export default function FormInput({ label, name, type = 'text', error, required, register, helpText, inputRef, ...rest }) {
+  const errorId = `${name}-error`;
   return (
     <div className="mb-4">
       <label htmlFor={name} className="block text-sm font-medium text-gray-700">
@@ -11,15 +12,18 @@ export default function FormInput({ label, name, type = 'text', error, required,
           type={type}
           id={name}
           name={name}
+          ref={inputRef}
           required={required}
           {...(register ? register(name) : {})}
           {...rest}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : rest['aria-describedby']}
           className={`shadow-sm block w-full sm:text-sm rounded-md py-2 px-3 border ${
             error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-teal-500 focus:border-teal-500'
           }`}
         />
       </div>
-      {error && <p className="mt-2 text-sm text-red-600">{error.message || error}</p>}
+      {error && <p id={errorId} className="mt-2 text-sm text-red-600" role="alert">{error.message || error}</p>}
       {helpText && !error && <p className="mt-2 text-sm text-gray-500">{helpText}</p>}
     </div>
   );

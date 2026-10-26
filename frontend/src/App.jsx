@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 
 // Layouts
@@ -65,11 +65,14 @@ const ProtectedRoute = ({ children, allowedRoles, requireApproved = true }) => {
   if (!user) return <Navigate to="/login" replace />;
 
   const userRole = user.role?.toUpperCase();
+  if (!['ADMIN', 'SCHOOL', 'NGO'].includes(userRole)) {
+    return <Navigate to="/login" replace />;
+  }
 
   if (allowedRoles) {
     const normalizedAllowed = allowedRoles.map(r => r.toUpperCase());
     if (!normalizedAllowed.includes(userRole)) {
-      return <Navigate to="/dashboard" replace />;
+      return <Navigate to={userRole === 'ADMIN' ? '/admin/dashboard' : '/dashboard'} replace />;
     }
   }
 
@@ -87,7 +90,10 @@ const DashboardSwitcher = () => {
   if (user?.role?.toUpperCase() === 'ADMIN') {
     return <AdminDashboard />;
   }
-  return <SchoolNGODashboard />;
+  if (['SCHOOL', 'NGO'].includes(user?.role?.toUpperCase())) {
+    return <SchoolNGODashboard />;
+  }
+  return <Navigate to="/login" replace />;
 };
 
 export default function App() {
@@ -107,7 +113,7 @@ export default function App() {
       <Route
         path="/pending-approval"
         element={
-          <ProtectedRoute requireApproved={false}>
+          <ProtectedRoute allowedRoles={['SCHOOL', 'NGO']} requireApproved={false}>
             <PendingApprovalPage />
           </ProtectedRoute>
         }
@@ -125,27 +131,23 @@ export default function App() {
         <Route path="/dashboard" element={<DashboardSwitcher />} />
         <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
 
-        {/* Beneficiaries — organizations upload/view documents from within
-            a beneficiary's own profile page, not a separate documents route. */}
-        <Route path="/beneficiaries" element={<BeneficiaryList />} />
-        <Route path="/beneficiaries/add" element={<AddBeneficiary />} />
-        <Route path="/beneficiaries/:id" element={<BeneficiaryProfile />} />
-        <Route path="/beneficiaries/edit/:id" element={<EditBeneficiary />} />
-
-        {/* Assessments */}
-        <Route path="/assessments" element={<AssessmentList />} />
-        <Route path="/assessments/:id" element={<AssessmentResult />} />
-
-        {/* Schemes & Recommendations */}
-        <Route path="/schemes" element={<SchemeList />} />
-        <Route path="/schemes/:id" element={<SchemeDetails />} />
-        <Route path="/schemes/recommendations/:beneficiaryId" element={<SchemeRecommendations />} />
-        <Route path="/recommendations/:beneficiaryId" element={<SchemeRecommendations />} />
-
-        {/* Operational Workflow */}
-        <Route path="/applications" element={<ApplicationTracking />} />
-        <Route path="/reports" element={<ReportsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+
+        {/* Organization portal routes are limited to approved school/NGO accounts. */}
+        <Route element={<ProtectedRoute allowedRoles={['SCHOOL', 'NGO']}><Outlet /></ProtectedRoute>}>
+          <Route path="/beneficiaries" element={<BeneficiaryList />} />
+          <Route path="/beneficiaries/add" element={<AddBeneficiary />} />
+          <Route path="/beneficiaries/:id" element={<BeneficiaryProfile />} />
+          <Route path="/beneficiaries/edit/:id" element={<EditBeneficiary />} />
+          <Route path="/assessments" element={<AssessmentList />} />
+          <Route path="/assessments/:id" element={<AssessmentResult />} />
+          <Route path="/schemes" element={<SchemeList />} />
+          <Route path="/schemes/:id" element={<SchemeDetails />} />
+          <Route path="/schemes/recommendations/:beneficiaryId" element={<SchemeRecommendations />} />
+          <Route path="/recommendations/:beneficiaryId" element={<SchemeRecommendations />} />
+          <Route path="/applications" element={<ApplicationTracking />} />
+          <Route path="/reports" element={<ReportsPage />} />
+        </Route>
 
         {/* Admin Governance */}
         <Route path="/admin/organizations" element={<ProtectedRoute allowedRoles={['ADMIN']}><OrganizationManagement /></ProtectedRoute>} />

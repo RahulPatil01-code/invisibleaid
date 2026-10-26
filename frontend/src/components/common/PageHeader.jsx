@@ -26,7 +26,8 @@ export default function PageHeader({ title, subtitle, actions = [] }) {
               <button
                 key={index}
                 onClick={action.onClick}
-                className={`${baseClass} ${variantClass}`}
+                disabled={action.disabled}
+                className={`${baseClass} ${variantClass} disabled:cursor-not-allowed disabled:opacity-50`}
               >
                 {Icon && <Icon className="mr-2 h-4 w-4" aria-hidden="true" />}
                 {action.label}
