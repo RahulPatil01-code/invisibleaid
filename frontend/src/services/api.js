@@ -56,10 +56,35 @@ client.interceptors.response.use(
   },
 );
 
+const prettyField = field =>
+  field.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+
+const formatErrors = data => {
+  if (!data) return null;
+  if (typeof data === 'string') return data;
+  if (Array.isArray(data)) return data.map(formatErrors).filter(Boolean).join(' ');
+  if (typeof data === 'object') {
+    return Object.entries(data)
+      .map(([field, value]) => {
+        const text = formatErrors(value);
+        if (!text) return null;
+        return ['detail', 'error', 'non_field_errors'].includes(field)
+          ? text
+          : `${prettyField(field)}: ${text}`;
+      })
+      .filter(Boolean)
+      .join('\n');
+  }
+  return String(data);
+};
+
 const request = async promise => {
-  try { return (await promise).data; } catch (error) {
-    const detail = error.response?.data?.detail || error.response?.data?.error;
-    const message = typeof detail === 'string' ? detail : 'Unable to complete the request.';
+  try {
+    return (await promise).data;
+  } catch (error) {
+    const message = error.response
+      ? formatErrors(error.response.data) || 'Unable to complete the request.'
+      : 'Cannot reach the server. Please check your connection.';
     const normalized = new Error(message);
     normalized.status = error.response?.status;
     normalized.data = error.response?.data;

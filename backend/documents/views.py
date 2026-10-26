@@ -4,18 +4,31 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Document
 from .serializers import DocumentSerializer
-from authentication.permissions import IsAdmin, IsAdminOrApprovedOrganization
+from authentication.permissions import IsAdmin, IsAdminOrApprovedOrganization, IsApprovedOrganization
 from audit.utils import log_action
 
 class DocumentViewSet(viewsets.ModelViewSet):
-    queryset = Document.objects.select_related('beneficiary', 'beneficiary__organization')
+    queryset = Document.objects.select_related('beneficiary', 'beneficiary__organization', 'uploaded_by')
     serializer_class = DocumentSerializer
     permission_classes = [IsAdminOrApprovedOrganization]
+
+    def get_permissions(self):
+        if self.action == 'create':
+            # Organizations collect and upload documents for their own
+            # beneficiaries. Admin reviews (verify/reject) but does not
+            # upload — IsApprovedOrganization deliberately excludes ADMIN.
+            return [IsApprovedOrganization()]
+        return super().get_permissions()
 
     def get_queryset(self):
         queryset = super().get_queryset()
         if self.request.user.role == 'ADMIN':
             return queryset
+        # Ownership is enforced here (not just in the frontend): a
+        # non-admin user can only ever see/operate on documents whose
+        # beneficiary belongs to their own organization. Changing a
+        # beneficiary id in the request cannot surface another
+        # organization's documents.
         return queryset.filter(beneficiary__organization=self.request.user.organization)
 
     def perform_create(self, serializer):

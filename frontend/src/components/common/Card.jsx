@@ -18,7 +18,23 @@ const iconBgStyles = {
   purple: 'bg-purple-50 text-purple-600',
 };
 
-export default function Card({ title, value, icon: Icon, change, color = 'teal' }) {
+export default function Card({ title, value, icon: Icon, change, color = 'teal', children, className = '' }) {
+  // Generic container mode: AddBeneficiary/EditBeneficiary wrap a whole
+  // form in <Card>, and BeneficiaryProfile wraps section content in
+  // <Card title="...">. Previously `children` was never read here, so all
+  // of that content silently vanished, leaving only the empty bordered box.
+  if (children !== undefined) {
+    return (
+      <div className={`bg-white rounded-xl shadow-sm border border-gray-100 p-5 ${className}`}>
+        {title && <h3 className="text-base font-semibold text-gray-800 mb-4">{title}</h3>}
+        {children}
+      </div>
+    );
+  }
+
+  // Stat-card mode: unchanged from before — used by dashboards
+  // (e.g. <Card title="Total Beneficiaries" value={n} icon={Users} color="teal" />),
+  // which never pass children.
   const borderClass = colorStyles[color]?.split(' ')[0] || 'border-l-teal-500';
   const iconBgClass = iconBgStyles[color] || 'bg-teal-50 text-teal-600';
 

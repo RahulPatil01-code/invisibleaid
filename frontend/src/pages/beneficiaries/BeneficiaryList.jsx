@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import DataTable from '../../components/common/DataTable';
 import Badge, { getVulnerabilityBadge } from '../../components/common/Badge';
 import PageHeader from '../../components/common/PageHeader';
-import { UserPlus, Download, Eye, ClipboardCheck, Award, Edit, Filter } from 'lucide-react';
+import { UserPlus, Download, Filter } from 'lucide-react';
 import { beneficiaryAPI } from '../../services/api';
 import { downloadCSV } from '../../utils/helpers';
 
@@ -43,12 +43,9 @@ export default function BeneficiaryList() {
     { header: 'Vulnerability Level', accessor: 'vulnerability_level', cell: value => value ? getVulnerabilityBadge(value) : <Badge>Not assessed</Badge> },
     { header: 'Status', accessor: 'status', cell: value => <Badge text={value} variant={value === 'ASSESSED' ? 'success' : 'warning'} /> },
   ];
-  const actions = [
-    { label: 'View Profile', icon: Eye, onClick: row => navigate(`/beneficiaries/${row.id}`) },
-    { label: 'Run Assessment', icon: ClipboardCheck, onClick: row => navigate(`/assessments/${row.id}`) },
-    { label: 'Matched Schemes', icon: Award, onClick: row => navigate(`/schemes/recommendations/${row.id}`) },
-    { label: 'Edit Details', icon: Edit, onClick: row => navigate(`/beneficiaries/edit/${row.id}`) },
-  ];
+  // No row-level action menu: clicking a row already opens its profile
+  // (onRowClick below), and Edit / Run Assessment / Recommendations are
+  // available from that profile page.
 
   return <div className="space-y-6">
     <PageHeader title="Beneficiary Records" subtitle="Registered children and socio-economic profiles under evaluation" actions={[{ label: 'Export CSV', icon: Download, onClick: handleExport, variant: 'outline' }, { label: 'Add Beneficiary', icon: UserPlus, onClick: () => navigate('/beneficiaries/add'), variant: 'primary' }]} />
@@ -57,6 +54,6 @@ export default function BeneficiaryList() {
       <input type="text" placeholder="Search by child name or ID..." value={searchTerm} onChange={event => setSearchTerm(event.target.value)} className="w-full md:max-w-md text-sm border border-gray-300 rounded-lg px-3.5 py-2" />
       <div className="flex flex-wrap items-center gap-3 text-sm"><Filter className="w-4 h-4 text-gray-400" /><select value={vulnFilter} onChange={event => setVulnFilter(event.target.value)} className="border border-gray-300 rounded-lg px-2.5 py-1.5"><option value="ALL">All Levels</option><option value="HIGH">High</option><option value="MODERATE">Moderate</option><option value="LOW">Low</option><option value="UNASSESSED">Not Assessed</option></select><select value={statusFilter} onChange={event => setStatusFilter(event.target.value)} className="border border-gray-300 rounded-lg px-2.5 py-1.5"><option value="ALL">All Statuses</option><option value="SUBMITTED">Submitted</option><option value="VERIFIED">Verified</option><option value="ASSESSED">Assessed</option></select></div>
     </div>
-    <DataTable columns={columns} data={filteredData} actions={actions} pagination pageSize={10} loading={loading} emptyMessage="No beneficiaries found." onRowClick={row => navigate(`/beneficiaries/${row.id}`)} />
+    <DataTable columns={columns} data={filteredData} pagination pageSize={10} loading={loading} emptyMessage="No beneficiaries found." onRowClick={row => navigate(`/beneficiaries/${row.id}`)} />
   </div>;
 }

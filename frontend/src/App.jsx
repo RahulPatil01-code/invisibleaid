@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 
 // Layouts
@@ -10,6 +10,7 @@ import LandingPage from './pages/public/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import PendingApprovalPage from './pages/auth/PendingApprovalPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 // Dashboards
@@ -31,7 +32,6 @@ import SchemeRecommendations from './pages/schemes/SchemeRecommendations';
 
 // Workflow & Management Pages
 import ApplicationTracking from './pages/applications/ApplicationTracking';
-import DocumentVerification from './pages/documents/DocumentVerification';
 import ReportsPage from './pages/reports/ReportsPage';
 import ProfilePage from './pages/profile/ProfilePage';
 
@@ -41,8 +41,19 @@ import SchemeManagement from './pages/admin/SchemeManagement';
 import RuleManagement from './pages/admin/RuleManagement';
 import AuditLogPage from './pages/admin/AuditLogPage';
 import SystemSettings from './pages/admin/SystemSettings';
+// Document review is admin-only (see /admin/documents below). Uploading
+// happens on a beneficiary's own profile page in the Organization portal,
+// not on a standalone /documents route.
+import DocumentVerification from './pages/documents/DocumentVerification';
 
-const ProtectedRoute = ({ children, allowedRoles }) => {
+// `requireApproved` (default true) blocks a SCHOOL/NGO user whose
+// organization is not yet APPROVED, sending them to /pending-approval
+// instead of into the portal. This is a UX gate only — the backend's
+// IsAdminOrApprovedOrganization permission class remains the real
+// authorization boundary and is unchanged. Pass requireApproved={false}
+// for routes a pending organization is allowed to see (e.g. the
+// pending-approval page itself, profile/logout).
+const ProtectedRoute = ({ children, allowedRoles, requireApproved = true }) => {
   const { user, loading } = useAuth();
   if (loading) {
     return (
@@ -52,13 +63,24 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     );
   }
   if (!user) return <Navigate to="/login" replace />;
+
+  const userRole = user.role?.toUpperCase();
+  if (!['ADMIN', 'SCHOOL', 'NGO'].includes(userRole)) {
+    return <Navigate to="/login" replace />;
+  }
+
   if (allowedRoles) {
-    const userRole = user.role?.toUpperCase();
     const normalizedAllowed = allowedRoles.map(r => r.toUpperCase());
     if (!normalizedAllowed.includes(userRole)) {
-      return <Navigate to="/dashboard" replace />;
+      return <Navigate to={userRole === 'ADMIN' ? '/admin/dashboard' : '/dashboard'} replace />;
     }
   }
+
+  const isOrgAccount = userRole === 'SCHOOL' || userRole === 'NGO';
+  if (isOrgAccount && requireApproved && user.organization?.status !== 'APPROVED') {
+    return <Navigate to="/pending-approval" replace />;
+  }
+
   return children;
 };
 
@@ -68,7 +90,10 @@ const DashboardSwitcher = () => {
   if (user?.role?.toUpperCase() === 'ADMIN') {
     return <AdminDashboard />;
   }
-  return <SchoolNGODashboard />;
+  if (['SCHOOL', 'NGO'].includes(user?.role?.toUpperCase())) {
+    return <SchoolNGODashboard />;
+  }
+  return <Navigate to="/login" replace />;
 };
 
 export default function App() {
@@ -83,6 +108,17 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
 
+      {/* Organization accounts land here while their organization is PENDING/REJECTED/SUSPENDED.
+          requireApproved={false} so this route itself never redirects a pending org back to itself. */}
+      <Route
+        path="/pending-approval"
+        element={
+          <ProtectedRoute allowedRoles={['SCHOOL', 'NGO']} requireApproved={false}>
+            <PendingApprovalPage />
+          </ProtectedRoute>
+        }
+      />
+
       {/* Authenticated Dashboard Pages with Unified Sidebar & Navbar */}
       <Route
         element={
@@ -95,27 +131,23 @@ export default function App() {
         <Route path="/dashboard" element={<DashboardSwitcher />} />
         <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
 
-        {/* Beneficiaries */}
-        <Route path="/beneficiaries" element={<BeneficiaryList />} />
-        <Route path="/beneficiaries/add" element={<AddBeneficiary />} />
-        <Route path="/beneficiaries/:id" element={<BeneficiaryProfile />} />
-        <Route path="/beneficiaries/edit/:id" element={<EditBeneficiary />} />
-
-        {/* Assessments */}
-        <Route path="/assessments" element={<AssessmentList />} />
-        <Route path="/assessments/:id" element={<AssessmentResult />} />
-
-        {/* Schemes & Recommendations */}
-        <Route path="/schemes" element={<SchemeList />} />
-        <Route path="/schemes/:id" element={<SchemeDetails />} />
-        <Route path="/schemes/recommendations/:beneficiaryId" element={<SchemeRecommendations />} />
-        <Route path="/recommendations/:beneficiaryId" element={<SchemeRecommendations />} />
-
-        {/* Operational Workflow */}
-        <Route path="/applications" element={<ApplicationTracking />} />
-        <Route path="/documents" element={<DocumentVerification />} />
-        <Route path="/reports" element={<ReportsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+
+        {/* Organization portal routes are limited to approved school/NGO accounts. */}
+        <Route element={<ProtectedRoute allowedRoles={['SCHOOL', 'NGO']}><Outlet /></ProtectedRoute>}>
+          <Route path="/beneficiaries" element={<BeneficiaryList />} />
+          <Route path="/beneficiaries/add" element={<AddBeneficiary />} />
+          <Route path="/beneficiaries/:id" element={<BeneficiaryProfile />} />
+          <Route path="/beneficiaries/edit/:id" element={<EditBeneficiary />} />
+          <Route path="/assessments" element={<AssessmentList />} />
+          <Route path="/assessments/:id" element={<AssessmentResult />} />
+          <Route path="/schemes" element={<SchemeList />} />
+          <Route path="/schemes/:id" element={<SchemeDetails />} />
+          <Route path="/schemes/recommendations/:beneficiaryId" element={<SchemeRecommendations />} />
+          <Route path="/recommendations/:beneficiaryId" element={<SchemeRecommendations />} />
+          <Route path="/applications" element={<ApplicationTracking />} />
+          <Route path="/reports" element={<ReportsPage />} />
+        </Route>
 
         {/* Admin Governance */}
         <Route path="/admin/organizations" element={<ProtectedRoute allowedRoles={['ADMIN']}><OrganizationManagement /></ProtectedRoute>} />
@@ -123,6 +155,9 @@ export default function App() {
         <Route path="/admin/assessments" element={<ProtectedRoute allowedRoles={['ADMIN']}><AssessmentList /></ProtectedRoute>} />
         <Route path="/admin/schemes" element={<ProtectedRoute allowedRoles={['ADMIN']}><SchemeManagement /></ProtectedRoute>} />
         <Route path="/admin/rules" element={<ProtectedRoute allowedRoles={['ADMIN']}><RuleManagement /></ProtectedRoute>} />
+        {/* Admin's ONLY entry point to documents: review/approve/reject.
+            No upload capability here — see documents/views.py: create() is
+            restricted to IsApprovedOrganization, which excludes ADMIN. */}
         <Route path="/admin/documents" element={<ProtectedRoute allowedRoles={['ADMIN']}><DocumentVerification /></ProtectedRoute>} />
         <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['ADMIN']}><ReportsPage /></ProtectedRoute>} />
         <Route path="/admin/audit-logs" element={<ProtectedRoute allowedRoles={['ADMIN']}><AuditLogPage /></ProtectedRoute>} />
